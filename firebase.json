@@ -1,0 +1,39 @@
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ],
+  "hosting": {
+    "public": "public",
+    "rewrites": [
+      {
+        "source": "/cal/weather-cal/**",
+        "function": "weatherCal"
+      },
+      {
+        "source": "/api/current-weather",
+        "function": "getCurrentWeather"
+      }
+    ],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  },
+  "emulators": {
+      "functions": {
+        "host": "127.0.0.1",
+        "port": 5008
+      }
+  }
+}
