@@ -1,4 +1,4 @@
-# [Weather in Calendar](https://weather-in-calendar.web.app/)
+Click [here](https://weather-in-calendar.web.app/) to go to the App
 
 # Weather in Calendar
 
