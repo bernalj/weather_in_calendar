@@ -66,6 +66,17 @@ exports.weatherCal = functions.https.onRequest({
 }, async (req, res) => {
   // Allow unauthenticated invocations
   try {
+    // Enable CORS for calendar subscriptions
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+    
     const city = req.query.city || 'Barcelona';
     const units = req.query.units === 'F' ? 'us' : 'metric';
     const mode = req.query.temperature === 'low-high' ? 'minmax' : 'daily';
@@ -103,13 +114,18 @@ exports.weatherCal = functions.https.onRequest({
         product: 'weather-in-calendar'
       },
       scale: 'gregorian',
-      timezone: 'UTC',
-      method: 'PUBLISH'
+      method: 'PUBLISH',
+      // Add a unique URL for the calendar to help with subscriptions
+      url: `https://us-central1-weather-in-calendar.cloudfunctions.net/weatherCal?city=${encodeURIComponent(city)}&units=${units === 'us' ? 'F' : 'C'}${mode === 'minmax' ? '&temperature=low-high' : ''}`
     });
     
-    // Add additional calendar properties at the beginning
+    // Add additional calendar properties for better compatibility
     cal.x('X-WR-CALNAME', calendarName);
     cal.x('X-WR-CALDESC', calendarDesc);
+    cal.x('X-PUBLISHED-TTL', 'PT1H'); // Refresh every hour
+    cal.x('X-WR-TIMEZONE', 'UTC');
+    
+    // Remove the duplicate X-WR-CALNAME and X-WR-CALDESC at the end
     
     // Create calendar events for each day (up to 14 days)
     weatherData.days.slice(0, 14).forEach(day => {
@@ -202,9 +218,16 @@ exports.weatherCal = functions.https.onRequest({
       });
     });
 
-    // 3️⃣ Return ICS
+    // 3️⃣ Return ICS directly from the library (preserves CRLF line endings)
+    const icsContent = cal.toString();
+    
     res.set('Content-Type', 'text/calendar; charset=utf-8');
-    res.send(cal.toString());
+    res.set('Content-Disposition', 'inline; filename="weather-calendar.ics"');
+    res.set('Content-Length', Buffer.byteLength(icsContent, 'utf8'));
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.status(200).send(icsContent);
   } catch (error) {
     console.error('Function error:', error);
     res.status(500).send(`Error: ${error.message}`);

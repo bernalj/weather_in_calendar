@@ -854,23 +854,25 @@
       // Handle "Add to Calendar" button click with platform-specific behavior
       addCalendarButton.addEventListener('click', function() {
         const { feedUrl, webcalUrl } = updateDisplay();
-        
-        // Google Calendar subscription deep link
-        const googleUrl = 'https://calendar.google.com/calendar/r?cid=' + feedUrl;
-
         const ua = navigator.userAgent.toLowerCase();
-        if (/iphone|ipad|ipod|macintosh/.test(ua)) {
-      // Use webcal protocol for iOS/macOS which triggers the calendar subscription prompt
-      window.location.href = webcalUrl;
-        } else if (/android/.test(ua)) {
-          // Android: download/open ICS
-          window.location.href = 'https://calendar.google.com/calendar/u/0/r/settings/addbyurl?url=' + encodeURIComponent(feedUrl);
+        const isIOS = /iphone|ipad|ipod/.test(ua);
+        const isMac = /macintosh/.test(ua) && navigator.maxTouchPoints > 1; // iPad on iPadOS 13+
+        const isAndroid = /android/.test(ua);
+        if (isIOS || isMac) {
+          // iOS/iPadOS: Use webcal:// protocol which triggers the calendar subscription prompt
+          window.location.href = webcalUrl;
         } else {
-          // Other: open Google Calendar in new tab
-          window.open('https://calendar.google.com/calendar/u/0/r?cid=' + encodeURIComponent(webcalUrl), '_blank');
+          // Android & Desktop: Use webcal:// for Google Calendar
+          // Google Calendar will convert it to https:// internally when fetching
+          const googleCalendarUrl = 'https://calendar.google.com/calendar/render?cid=' + encodeURIComponent(webcalUrl);
+          if (isAndroid) {
+            window.location.href = googleCalendarUrl;
+          } else {
+            // Desktop: Open in new tab
+            window.open(googleCalendarUrl, '_blank');
+          }
         }
       });
-      
       // Handle copy button click to copy calendar URL to clipboard
       copyButton.addEventListener('click', function() {
         navigator.clipboard.writeText(calendarUrl.textContent)
